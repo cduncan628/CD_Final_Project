@@ -1,0 +1,99 @@
+---
+title: "Cassie_Duncan_Foundations_in_Data_Science_Final_Project"
+author: "Cassandra Duncan"
+date: "2025-09-29"
+output: pdf_document
+---
+
+## First Check-In
+
+Generate Summary Statistics
+```{r}
+
+# read in the Sample RNA-seq Count Matrix
+gene_df <- read.csv("/Users/cassieschool/Documents/Foundations in Data Science/Final Project/Data/counts.csv", header = TRUE)
+
+# Convert the data frame to long format from wide format
+gene_df_long <- tidyr::pivot_longer(gene_df, cols = -X, names_to = "barcode", values_to = "Count")
+  
+# Subset data to only include one selected gene of interest (TACSTD2)
+one_gene <- gene_df_long[gene_df_long$X == "ENSG00000184292.7", ]
+
+# Generate full summary statistics (minimum, first quantile, median, mean, third quantile, and maximum)
+summary(one_gene$Count)
+
+# Generate Standard Deviation separately since it is not included in the Summary Statistics
+cat("Standard Deviation", "\n", sd(one_gene$Count))
+       
+```
+
+Create Histogram
+```{r}
+library(ggplot2)
+
+# Create histogram of one gene of interest
+gene_plot <- ggplot(one_gene, aes(x = Count)) +
+  geom_histogram(binwidth = 350, bins = 9000, # set bins and bin width
+                 fill = "aquamarine4") + #choose color of plot
+  # add titles to plot and axes
+  labs(title = "Distribution of Counts for Gene TACSTD2",
+       x = "Count",
+       y = "Frequency") +
+  theme_minimal()
+
+print(gene_plot)
+       
+```
+
+Create Scatter Plot
+```{r}
+
+# subset data for only two genes of interest
+two_genes <- gene_df_long[gene_df_long$X == "ENSG00000184292.7" | gene_df_long$X == "ENSG00000110092.4", ]
+
+# convert the dataframe to wide format from long format so genes are column headers for count values
+two_genes_wide <- tidyr::pivot_wider(two_genes, names_from = X, values_from = Count)
+
+# Create scatterplot of comparing two selected genes
+gene_scatter <- ggplot(two_genes_wide, aes(x = ENSG00000184292.7, y = ENSG00000110092.4)) +
+  # set color and size of points in scatterplot
+  geom_point(color = "darkorchid4", size = 0.5) +
+  # add title to plot and axes
+  labs(title = "Comparison of Counts for Gene TACSTD2 vs Gene CCND1",
+       x = "Gene TACSTD2 Count",
+       y = "Gene CCND1 Count") +
+  theme_minimal()
+
+print(gene_scatter)
+
+```      
+
+Create Violin Plot
+```{r}
+
+# read in metadata file
+metadata <- read.csv("/Users/cassieschool/Documents/Foundations in Data Science/Final Project/Data/meta_data.csv", header = TRUE)
+
+# subset metadata to only include one covariate of interest
+covariate_metadata <- subset(metadata, select = c(barcode, paper_pathologic_stage))
+
+# convert barcode values in metadata to have . instead of . so they can match up to data in count file
+covariate_metadata$barcode <- gsub("-", ".", covariate_metadata$barcode)
+
+# join count data and metadata by barcode/sample so gene counts can be compared to chosen covariate
+gene_metadata <- merge(one_gene, covariate_metadata[, c("barcode", "paper_pathologic_stage")], by = "barcode", all.x = TRUE)
+
+# generate violin plot for distribution of count data based on covariate
+# omitted NA values in plotting
+gene_violin <- ggplot(na.omit(gene_metadata), aes(x = paper_pathologic_stage, y = Count, fill = paper_pathologic_stage)) +
+  geom_violin() +
+  # add title to plot and axes
+  labs(title = "Distribution of Count of Gene TACSTD2 for Disease Pathologic Stage", 
+       x = "Disease Pathologic Stage", 
+       y = "Gene TACSTD2 Count") +
+  # set plot color scheme
+  scale_fill_brewer(palette = "Blues")
+
+print(gene_violin)
+      
+```
